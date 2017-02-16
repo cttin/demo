@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>新闻懒加载</title>
+  <style>
+    *{
+      margin: 0;
+      padding: 0;
+    }
+    a{
+     color: #333;
+     text-decoration: none;
+   }
+   li{
+     list-style: none;
+   }
+   .clearfix:after {
+	 		content: '';
+	 		display: block;
+	 		clear: both;
+	 	}
+   .wrap{
+     max-width: 600px;
+     margin: 0 auto;
+   }
+   .item{
+     margin-top: 20px;
+   }
+   .item:after{
+     content: '';
+     display: block;
+     clear: both;
+   }
+   .item .thumb img{
+     width: 50px;
+     height: 50px;
+   }
+   .item .thumb {
+     float: left;
+   }
+   .item h2{
+     margin-left: 60px;
+     font-size: 14px;
+
+   }
+   .item p{
+     margin-left: 60px;
+     font-size: 14px;
+     margin-top: 10px;
+     color: #ccc;
+   }
+   .load-more{
+     visibility: hidden;
+     margin: 3px;
+     height: 3px;
+   }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <ul class="news">
+
+    </ul>
+    <p class="load-more"></p>
+    <!-- 页面一开始没有滚动条，利用p出现发请求。 -->
+  </div>
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+  <script>
+    var pageNumber = 0,
+        isLoaded = true,
+        isOver = false;
+    getNews();
+    $(window).on('scroll', checkNews);
+
+    function getNews() {
+      isLoaded = false;
+      $.get('/getNews', {page: pageNumber}).done(function(res) {
+        isLoaded = true;
+        if(res.status == 0) {
+          pageNumber++;
+          appendHtml(res.filterNews);
+          checkNews();
+        }else{
+          alert("获取新闻出错！");
+        }
+      }).fail(function() {
+        alert("系统异常！");
+      })
+    }
+
+    function appendHtml(news) {
+      if(news.length == 0) {
+        isOver = true;
+        $('.wrap').append('<p>没有更多新闻啦~~~</p>')
+      }
+      var htmls = '';
+      $.each(news, function(){
+        console.log(this.img);
+        htmls += '<li class="item clearfix">';
+        htmls += '<a href="' + this.link + '">';
+        htmls += '<div class="thumb"> <img src="' + this.img + '"></div>';
+        htmls += '<h2>'+this.title+'</h2>';
+        htmls += '<p>'+this.brif+'</p>';
+        htmls += '</a></li>';
+      })
+      console.log(htmls);
+      $('.news').append(htmls);
+      // $('.news').append(news.map(new => `
+      //     <li class="item">
+      //       <a href="${new.link}">
+      //         <img src="${new.img}"></div>
+      //         <h2>${new.title}</h2>
+      //         <p>${new.brief}</p>
+      //       </a>
+      //     </li>
+      // `).join(''))
+    }
+
+    function checkNews() {
+      if(isShow($('.load-more')) && isLoaded && !isOver) {
+        getNews();
+      }
+    }
+
+    function isShow($node) {
+      var windowHeight = $(window).height(),
+          scrollTop = $(window).scrollTop(),
+          offsetTop = $node.offset().top,
+          nodeHeight = $node.outerHeight(true);
+      if((scrollTop < offsetTop + nodeHeight) && (windowHeight + scrollTop > offsetTop)) {
+        return true;
+      }else{
+        return false;
+      }
+    }
+  </script>
+</body>
+</html>
