@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>瀑布流无限懒加载</title>
+  <style type="text/css">
+    *{
+      margin: 0;
+      padding: 0;
+    }
+    li{
+      list-style: none;
+    }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #a5dff9;
+    }
+    .clearfix:after{
+  		content: '';
+  		display: block;
+  		clear: both;
+	  }
+    .container{
+      width: 1200px;
+      margin: 0 auto;
+      /*border: 1px solid;*/
+    }
+    .waterfall{
+      position: relative;
+    }
+    .item{
+      width: 280px;
+      position: absolute;
+      box-shadow: 1px 1px 12px #bdbdbd;
+      margin: 10px;
+      padding-bottom: 20px;
+      background-color: #fff;
+      top: 0;
+      left: 0;
+      /*transition: all .6s;*/
+   }
+   .item img{
+     width: 280px;
+   }
+   .header {
+     border-bottom: 1px dotted rgb(47, 152, 66);
+     line-height: 40px;
+     color: #616161;
+     margin: 0 15px;
+   }
+  .des{
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #9e9e9e;
+    margin: 10px 15px;
+  }
+  .error{
+    background: #f00;
+    padding: 5px 10px;
+    border-radius: 3px;
+  }
+  .hide{
+		display: none;
+	}
+  .load{
+    visibility: hidden;
+		height: 20px;
+  }
+  </style>
+</head>
+<body>
+    <div class="container">
+    	<ul class="waterfall clearfix">
+        <!--<li class="item">
+          <a href="#"><img src="http://www.sinaimg.cn/dy/slidenews/5_t160/2017_05/453_84709_824801.jpg" alt=""></a>
+          <h4 class="header">大象脚推乌龟前行似踢足球</h4>
+          <p class="des">一只闲得无聊的大象在草地漫步时发现一只豹纹陆龟，伸出大脚踢了踢乌龟。</p>
+        </li>-->
+    	</ul>
+    </div>
+    <div class="load">出现就加载并渲染</div>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+    <script src="backTop.js"></script>
+    <script>
+      var Waterfall = {
+        arrHeight: [],
+        currentPage: 1,
+        init: function($container) {
+          this.$ct = $container;
+          this.$items = this.$ct.find('.item');
+          this.$itemsWidth = this.$items.first().outerWidth(true);
+          // this.bind();
+          this.render();
+        },
+
+        render: function() {
+          let that = this;
+          this.arrInit(this.colNum());
+          this.$items.each(function() {
+            that.placeItem($(this));
+          })
+        },
+
+        colNum: function() {
+          return Math.floor(this.$ct.width() / this.$itemsWidth);
+        },
+
+        arrInit: function(num) {
+          for(let i = 0; i < num; i++) {
+            this.arrHeight[i] = 0;
+          }
+        },
+
+        placeItem: function($el) {
+          // 1. 找到arrColHeight的最小值，得到是第几列
+  			  // 2. 元素left的值是 列数*宽度
+  			  // 3. 元素top的值是 最小值
+  			  // 4. 放置元素的位置，把arrColHeight对应的列数的值加上当前元素的高度
+          let minHeightInfo = this.getIndexOfMinHeight(this.arrHeight),
+              min = minHeightInfo.min,
+              idx = minHeightInfo.idx;
+          $el.css({
+            left: idx*this.$itemsWidth,
+            top: min
+          });
+          this.arrHeight[idx] += $el.outerHeight(true);
+          // 解决因为绝对定位，父容器塌陷问题。使得.load总是在页面顶部。
+          $('.container').height(Math.max.apply(null,this.arrHeight));
+        },
+
+        getIndexOfMinHeight: function(arr) {
+          let min = arr[0],
+              idx = 0;
+          for(let i = 1; i < arr.length; i++) {
+            if(arr[i] < min) {
+              min = arr[i];
+              idx = i;
+            }
+          }
+          return {
+            min: min,
+            idx: idx
+          }
+        },
+
+        // 判断.load是否在可视范围中
+        isVisible: function($load) {
+          let windowHeight = $(window).height(), //获取浏览器窗口高度
+              scrollTop = $(window).scrollTop(), //获取页面顶部到窗口顶部的滚动距离
+              offsetTop = $load.offset().top, //获取该元素距页面顶部的距离
+              nodeHeight = $load.outerHeight(true);
+          if (windowHeight + scrollTop > offsetTop && scrollTop < offsetTop + nodeHeight) {
+            return true;
+          }else {
+            return false;
+          }
+        },
+
+        // 如果出现，则获取数据
+        loadMore: function(newsNum) {
+          let that = this;
+          $.ajax({
+            url: 'http://platform.sina.com.cn/slide/album_tech',
+            dataType: 'jsonp',
+            jsonp: 'jsoncallback',
+            data: {
+              app_key: '1271687855',
+              num: newsNum,
+              page: this.currentPage
+            },
+            success: function(ret) {
+              that.whenSuccess(ret);
+            },
+            error: function() {
+              that.whenError();
+            }
+          })
+        },
+
+        whenSuccess: function(ret) {
+          let that = this;
+          if(ret && ret.status && ret.status.code == "0") {
+            let $node = this.assembleHtml(ret.data);
+            $('.waterfall').append($node);
+            let deferreds = [];
+            $('.item img').each(function() {
+              let defer = $.Deferred();
+              $(this).on('load', function() {
+	    			 	  defer.resolve();
+	    			  });
+              deferreds.push(defer);
+              console.log(deferreds);
+            })
+            $.when(deferreds).done(function() {
+              that.currentPage++;
+	    	    		//当Deferred（延迟）解决时 即全部图片加载后，进行瀑布流布局
+							that.init($('.container'));
+						});
+          }
+        },
+
+        whenError: function() {
+          let $errorMsg = $('<span class="error"}>服务器出错了</span>');
+          console.log(this.$ct);
+          $('.container').append($errorMsg).fadeIn(1000, function() {
+            setTimeout(function() {
+              $errorMsg.fadeOut(1000);
+            }, 1000)
+          })
+        },
+
+        assembleHtml: function(items) {
+          return items.map(item => `
+            <li class="item">
+              <a href="${item.url}"><img src="${item.img_url}" alt=""></a>
+              <h4 class="header">${item.short_name}</h4>
+              <p class="des">${item.short_intro}</p>
+            </li>
+         `).join('');
+        }
+      }
+
+      if(Waterfall.isVisible($('.load'))) {
+        Waterfall.loadMore(10);
+      }
+
+      //设置延时，提高性能，只在最后一次事件响应的时候执行
+      var clock;
+	    $(window).on('scroll',function () {
+	    	if (clock) {
+	    		clearTimeout(clock);
+	    	}
+	    	clock = setTimeout(function () {
+          if(Waterfall.isVisible($('.load'))) {
+            Waterfall.loadMore(10);
+          }
+	    	},200);
+	    });
+
+      // 如果容器不定宽度，浏览器宽度改变重新布局
+      $(window).on('resize', function() {
+        Waterfall.render();
+      });
+
+      // 回到顶部
+    $(document).backtop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>木桶布局</title>
+  <style>
+    *{
+      margin: 0;
+      padding: 0;
+    }
+    body{
+      background: #f1bbba;
+    }
+    .barrels{
+      width: 1000px;
+      margin: 20px auto 0 auto;
+    }
+    .img-row:after{
+      content:"";
+      display:block;
+      clear:both;
+    }
+    .img-ct{
+      float:left;
+    }
+    .load{
+      visibility: hidden;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="barrels">
+
+  </div>
+  <div class="load">我出现就加载</div>
+
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+  <script>
+    var barrels = {
+      imgNum: 0,
+      standardHeight: 0,
+      rowList: [],
+      barrelsWidth: 0,
+
+      init: function($barrels, imgNum, standardHeight) {
+        this.$barrels = $barrels;
+        this.imgNum = imgNum;
+        this.standardHeight = standardHeight;
+        this.barrelsWidth = this.$barrels.width();
+        this.loadImg();
+      },
+
+      render: function(imgInfo) {
+        let that = this,
+            barrelsWidth = this.barrelsWidth,
+            // rowList = this.rowList,
+            rowWidth = 0,
+            newImgHeight = 0,
+            lastImgInfo = imgInfo;
+
+        that.rowList.push(lastImgInfo); // 当这行图片没有超过容器宽度时，则一直放到这一行。
+        $.each(that.rowList, function(index, imgInfo) {
+          rowWidth += imgInfo.width;
+          if(rowWidth > barrelsWidth) {
+            that.rowList.pop();
+            rowWidth -= imgInfo.width;
+            // 重新计算缩放比例
+            newImgHeight = that.standardHeight * barrelsWidth / rowWidth;
+            that.appendHtml(newImgHeight);
+            that.rowList = [];
+            that.rowList.push(lastImgInfo);
+          }
+        })
+      },
+
+      appendHtml: function(newHeight) {
+        let $newRow = $('<div class="img-row"></div>'); // 创建新元素
+        $.each(this.rowList, function(index, imgInfo) {
+          let $newImgCt = $('<div class="img-ct"></div>'),
+              $newImg = imgInfo.targetImg;
+          $newImg.height(newHeight);
+          $newImgCt.append($newImg);
+          $newRow.append($newImgCt);
+        })
+        this.$barrels.append($newRow);
+      },
+
+      loadImg: function() {
+        let that = this;
+        let imgURLs = this.getURL(this.imgNum);
+        $.each(imgURLs, function(index, url) {
+          let img = new Image();
+          img.src = url;
+          img.onload = function() {
+            let originWidth = img.width,
+                originHeight = img.height,
+                ratio = originWidth/originHeight;  // 宽度根据比例进行缩放
+            let imgInfo = {
+              targetImg: $(img),
+              width: that.standardHeight*ratio,
+              height: that.standardHeight
+            }
+            that.render(imgInfo);
+          };
+
+        })
+      },
+
+      getURL: function(imgNum) {
+        let width, height, color;
+        let urls = [];
+        for(let i = 0; i < imgNum;i++) {
+          width = Math.floor(Math.random() * 100 + 200);
+          height = Math.floor(Math.random() * 100 + 200);
+          color = Math.random().toString(16).substring(2,8);
+          // urls.push("http://placehold.it/" + width + "x" + height + "/" + color + "/fff");
+          urls.push("https://unsplash.it/" + width + "/" + height + "/?random");
+        }
+        return urls;
+      },
+
+      // 判断.load是否出现
+      isVisible: function($node) {
+        var windowHeight = $(window).height(),
+              scrollTop = $(window).scrollTop(),
+              offsetTop = $node.offset().top,
+              nodeHeight = $node.outerHeight(true);
+        if (windowHeight + scrollTop > offsetTop && scrollTop < offsetTop + nodeHeight) {
+            return true;
+        }else{
+            return false;
+        }
+      }
+    }
+
+    // 一开始的时候让图片铺满屏幕
+    barrels.init($('.barrels'), 20, 200);
+
+    var clock;
+    $(window).on('scroll',function () {
+      if (clock) {
+        clearTimeout(clock);
+      }
+      clock = setTimeout(function () {
+        if(barrels.isVisible($('.load'))) {
+          barrels.init($('.barrels'), 30, 200);
+        }
+      },200);
+    });
+  </script>
+</body>
+</html>
