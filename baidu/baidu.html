@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" type="text/css" href="./css/baidu.css"/>
+    <title>页面内有一个input输入框，实现在数组arr查询命中词并要求autocomplete效果</title>
+</head>
+<body>
+    <div id="main_box">
+        <div id="head">
+            <p class="bd_wrap">
+                <img width="270" height="129" src="./imges/bd_logo.png"/>
+            </p>
+            <form id="form" action="http://www.baidu.com/s" method="get" accept-charset="utf-8" name="myForm">
+                <div id="span_search">
+                    <input id="input_search" type="text" autocomplete="off" onkeyup="keyEvent(event)">
+                    <div id="div_suggestions">
+                        <ul id="ul_suggestions"></ul>
+                    </div>
+                </div>
+                <input class="submit" type="submit" value="百度一下">
+            </form>
+        </div>
+    </div>
+    <script src="./js/baidu.js"></script>
+</body>
+</html>
